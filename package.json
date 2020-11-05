@@ -4,8 +4,11 @@
   "version": "0.1.2",
   "description": "POC project to create a desktop application using Electron and Gatsby",
   "main": "./out/electron/index.js",
+  "testss": "mocha",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "cross-env BABEL_ENV=development NODE_ENV=test node node_modules/karma/bin/karma start karma.conf.js",
+    "karma": "node node_modules/karma/bin/karma start config/karma.conf.js",
+    "coverage": "nyc -r text -e .ts -x \"tests/*.test.ts\" npm run test",
     "build": "webpack --config webpack.ui.config.js --config webpack.electron.config.js",
     "build:watch": "npm run build -- --watch",
     "build-server": "dotnet publish ./src/server/ --output ../../out/server",
@@ -15,6 +18,11 @@
     "dist-m": "electron-builder build -m -c.extraMetadata.main=out/electron/index.js",
     "dist": "electron-builder build -wlm -c.extraMetadata.main=out/electron/index.js",
     "deploy": "electron-builder build -w -c.extraMetadata.main=out/electron/index.js --publish always"
+  },
+  "babel": {
+    "presets": [
+      "react-app"
+    ]
   },
   "repository": {
     "type": "git",
@@ -34,6 +42,8 @@
     "asset"
   ],
   "devDependencies": {
+    "@types/jasmine": "^3.5.14",
+    "@types/mocha": "^8.0.3",
     "@types/react": "^16.9.49",
     "@types/react-dom": "^16.9.8",
     "@types/react-router-dom": "^5.1.5",
@@ -43,9 +53,14 @@
     "electron-reload": "^1.5.0",
     "file-loader": "^6.1.0",
     "html-webpack-plugin": "^4.4.1",
+    "jasmine": "^3.6.3",
+    "mocha": "^8.2.0",
+    "nyc": "^15.1.0",
     "react-iframe": "^1.8.0",
+    "spectron": "^12.0.0",
     "style-loader": "^1.2.1",
     "ts-loader": "^8.0.3",
+    "ts-node": "^9.0.0",
     "typescript": "^4.0.2",
     "webpack": "^4.44.1",
     "webpack-cli": "^3.3.12"
@@ -56,8 +71,13 @@
     "@types/react-highlight.js": "^1.0.0",
     "axios": "^0.20.0",
     "axios-retry": "^3.1.9",
+    "babel-preset-react-app": "^9.1.2",
     "common-path": "^1.0.1",
+    "cross-env": "^7.0.2",
     "crypto": "^1.0.1",
+    "electron-log": "^1.3.0",
+    "electron-updater": "^4.0.6",
+    "jsdom": "^16.4.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-dropzone": "^11.2.0",
@@ -65,8 +85,7 @@
     "react-highlight.js": "^1.0.7",
     "react-router-dom": "^5.2.0",
     "url-loader": "^4.1.0",
-    "xml-beautifier": "^0.4.3",
-    "electron-log": "^1.3.0",
-    "electron-updater": "^4.0.6"
+    "webpack-karma-jasmine": "^4.0.0",
+    "xml-beautifier": "^0.4.3"
   }
 }
