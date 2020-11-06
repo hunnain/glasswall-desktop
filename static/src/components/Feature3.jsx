@@ -18,7 +18,7 @@ export default function Feature3() {
               <div className="text-container margin-top-80">
                 <h3>Rebuild Engine</h3>
                 <p>
-                They are very useful for DevOps and SREs who need to deal with multiple (even hundreds of) clusters. A single workspace contains a list of clusters and their full configuration.
+                Access the Glasswall Rebuild engine which creates safe files into a known good state (no malicious content).
                 </p>
               </div>
             </div>

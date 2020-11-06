@@ -19,6 +19,7 @@ Glasswall Desktop is a desktop application that provides multi file drag and dro
 1. Just drag and drop the files from your local hard disk, and the Glasswall Desktop will rebuild them using the Glasswall Rebuild API (currently hosted on Azure).
 2. To support different directory structures, give freedom to save the files at custom directory structure or at default location by maintaining the same directory as that of the parent folder.
 3. To support different platforms (Windows, MAC and Linux)
+4. To provide online and offline file-rebuild support. The online version to use glasswall-rebuild cloud hosting of rebuild engine to rebuild files. The offline version to use glasswall docker image to provide the ame functions offline.
 
 # [Glasswall Desktop](https://k8-proxy.github.io/glasswall-desktop/)
 
@@ -53,7 +54,7 @@ Warning: This software is under active development. Use at your own risk.
 
 ### macOS
 
-Download the latest [glasswall-desktop release](https://github.com/k8-proxy/glasswall-desktop/releases/download/v0.1.1/glasswall-desktop-0.1.1.dmg).
+Download the latest [glasswall-desktop release](https://github.com/k8-proxy/glasswall-desktop/releases/download/v0.1.4/glasswall-desktop-0.1.4.dmg).
 
 Mac users will need to follow the below steps on the app when you first launch it, until we have [code signing](https://www.electron.build/code-signing) set up
 
@@ -75,12 +76,12 @@ TBD: Will automatically update when a new release is available.
 
 ### Windows
 
-Download the latest [glasswall-desktop release](https://github.com/k8-proxy/glasswall-desktop/releases/download/v0.1.1/glasswall-desktop-Setup-0.1.1.exe)
+Download the latest [glasswall-desktop release](https://github.com/k8-proxy/glasswall-desktop/releases/download/v0.1.4/glasswall-desktop-Setup-0.1.4.exe)
 
 Windows users will need to follow the below steps to install and launch the application.
 
 * **Step 1**
-Download the package from the above link, observe that .exe executable would be downloaded, glasswall-desktop-Setup-0.1.1.exe.
+Download the package from the above link, observe that .exe executable would be downloaded, glasswall-desktop-Setup-0.1.4.exe.
 
 
 * **Step 2**
@@ -101,10 +102,55 @@ Click on Get Started to navigate to the Rebuild Files page.
 ![glasswall-desktop Screenshot](img/Windows_Rebuild_Page.JPG)
 
 
+* **Step 5**
+
+**Rebuild offline with glasswall docker**
+
+* Prerequisite - Ensure docker is installed on the machine running the rebuild with docker.
+Platform specific installation guides are avalaible at https://docs.docker.com/engine/install/
+
+
+* Click on the "Docker" icon in the sidebar menu.
+
+![glasswall-docker Screenshot](img/docker-rebuild.png)
+
+* Choose the files to rebuild and the target directory.
+
+* For first time installations, the application will pull the glasswallsolutions/evaluationsdk:1 docker image from docker-hub registry.
+
+![glasswall-docker Screenshot](img/gw_docker_image.png)
+
+* For first time rebuild, the application will ask for user permission to share file systems with docker
+
+![glasswall-docker Screenshot](img/docker_share_notification.png)
+
+
+Allow by clicking "Share It".
+
+* To avoid this notification in future, note the "temp" directory that the application asks to allow access to. Follow below steps to add this directory permanently in docker file sharing settings to avoid these notifications in the future
+
+* Open "Docker-Settings" from systemtray
+
+
+![glasswall-docker Screenshot](img/open_docker_setting.png)
+
+* Open "File-Sharing" tab and click on the "+" icon
+
+
+![glasswall-docker Screenshot](img/docker_file_share_add_dir.png)
+
+* Add the diectory noted above, for which the notification appears
+
+
+![glasswall-docker Screenshot](img/allow_docker_share.png)
+
+Once added, further rebuilds will not prompt to allow sharing the directory each time when using docker to rebuild files.
+
+
 ### Linux Snap
 
 Glasswall desktop is only available for 64-bit Linux systems.
-Download the latest [glasswall-desktop release](https://github.com/k8-proxy/glasswall-desktop/releases/download/v0.1.1/glasswall-desktop-Setup-0.1.1.snap)
+Download the latest [glasswall-desktop release](https://github.com/k8-proxy/glasswall-desktop/releases/download/v0.1.4/glasswall-desktop-0.1.4.snap)
 
 Linux/Ubuntu users will need to follow the below steps on the app when you first launch it.
 
@@ -154,6 +200,15 @@ To configure the codebase clone or download the codebase from the git and instal
 ![Project Structure](img/Project%20Structure.JPG)
 
 
+## Release with git actions
+
+To release the linux version following steps are required
+
+1. Create Ubuntu One account on https://login.ubuntu.com/
+2. After creating Ubuntu One account login to https://snapcraft.io/ using account created in step 1
+3. Follow the instruction to register your app https://snapcraft.io/docs/registering-your-app-name app name will be "glasswall-desktop"
+4. After app name registration export the login credential using "snapcraft export-login --snaps SNAP_NAME --channels edge -" command.
+5. Copy the output of the command and add it as a github secret with name "snapcraft_token". Link on how to add secrets in github account https://docs.github.com/en/free-pro-team@latest/actions/reference/encrypted-secrets#creating-encrypted-secrets-for-a-repository
 
 
 ## Debugging

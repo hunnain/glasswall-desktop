@@ -14,6 +14,7 @@ const { ipcRenderer } = require('electron');
 const useStyles = makeStyles((theme) => ({
     root:       {
         display:        'flex',
+        background:     '#fff'
     },
     fullWidth:{
         maxWidth:       '100%',
@@ -102,7 +103,7 @@ const useStyles = makeStyles((theme) => ({
     },
     contentArea:{
         minHeight:       '81vh',
-        padding:         theme.spacing(3),
+        padding:         theme.spacing(0),
     },
     gridMainContainer:{
 

@@ -19,7 +19,12 @@ import { NavLink, Link }        from 'react-router-dom'
 import Logo                     from '../assets/images/logo.png'
 import Navbar                   from '../components/Navbar'
 import RebuildIcon              from '../assets/images/rebuild.png'
+import DockerIcon               from '../assets/images/docker.png'
+import SettingIcon              from '../assets/images/setting.png'
 import HomeIcon                 from '../assets/images/homeIcon.png';
+import Tooltip                  from '@material-ui/core/Tooltip';
+import dockerIcon               from '../assets/images/docker.png'
+import { useLocation }          from 'react-router-dom'
 
 const drawerWidth = 280;
 
@@ -51,7 +56,7 @@ const useStyles = makeStyles((theme) => ({
         maxWidth:               '100%',
     },
     active: {
-        background:             '#ddd',
+        background:             '#144e78 !important',
         width:                  '100%'
     },
     navLink: {
@@ -60,6 +65,7 @@ const useStyles = makeStyles((theme) => ({
         paddingLeft:            '10px'
     },
     appBar: {
+        color:                  '#fff',   
         background:             '#0c3451',
         zIndex:                 theme.zIndex.drawer + 1,
         transition:             theme.transitions.create(['width', 'margin'], {
@@ -68,6 +74,7 @@ const useStyles = makeStyles((theme) => ({
         }),
     },
     appBarShift: {
+        background:             '#0c3451',
         marginLeft:             drawerWidth,
         width:                  `calc(100% - ${drawerWidth}px)`,
         transition:             theme.transitions.create(['width', 'margin'], {
@@ -82,18 +89,25 @@ const useStyles = makeStyles((theme) => ({
         display:                'none',
     },
     drawer: {
+        background:             '#0c3451',
         width:                  drawerWidth,
         flexShrink:             0,
         whiteSpace:             'nowrap',
     },
     drawerOpen: {
+        color:                  '#fff',
+        background:             '#0c3451',
         width:                  drawerWidth,
         transition:             theme.transitions.create('width', {
             easing:             theme.transitions.easing.sharp,
-            duration:           theme.transitions.duration.enteringScreen,
+            duration:           theme.transitions.duration.enteringScreen,            
         }),
+        '& button':{
+            color:          '#fff'
+        }
     },
     drawerClose: {
+        background:             '#0c3451',
         transition:             theme.transitions.create('width', {
             easing:             theme.transitions.easing.sharp,
             duration:           theme.transitions.duration.leavingScreen,
@@ -106,6 +120,7 @@ const useStyles = makeStyles((theme) => ({
         },
     },
     toolbar: {
+        color:                  '#fff',
         display:                'flex',
         alignItems:             'center',
         justifyContent:         'flex-end',
@@ -117,25 +132,61 @@ const useStyles = makeStyles((theme) => ({
             paddingTop:          '10px',
             paddingBottom:       '10px',
             borderBottom:        '1px solid #ccc',
+            position:            'relative',
             '&:hover':{
-                background:      '#ddd',                
+                background:      '#144e78',        
+
+                '& div':{
+                    display:          'block'
+                }
             }
         }
     },
     navText:{
         '& span':{
             fontSize:             '15px',
-            fontWeight:           'bold'
+            color:                '#fff'
         }        
+    },
+    tooltipBox:{
+        display:                 'none',
+        position:                'fixed',
+        background:              '#5ea1e7',
+        color:                   '#fff',
+        margin:                  '10px',
+        padding:                 '20px',
+        borderRadius:            '5px',
+        left:                    '45px',
+        '&::before':{
+            content:             '" "',
+            height:              '10px',
+            width:               '10px',
+            position:            'absolute',
+            background:          '#5ea1e7',
+            left:                '-5px',
+            transform:           'rotate(45deg)',
+        }
     }
 }));
 type headerOptions = {
     showBack: boolean
 }
 function SideDrawer({ showBack }: headerOptions) {
+    const location = useLocation();
+    //console.log(location.pathname);
+
     const classes = useStyles();
     const theme = useTheme();
     const [open, setOpen] = React.useState(false);
+    // const [openTooltip, setopenTooltip] = React.useState(false);    
+
+    // const handleClose = () => {
+    //     setopenTooltip(false);
+    // };
+
+    // const handleOpen = () => {
+    //     setopenTooltip(true);
+    // };
 
     const handleDrawerOpen = () => {
         setOpen(true);
@@ -149,12 +200,22 @@ function SideDrawer({ showBack }: headerOptions) {
     {
         navName:    'Home',
         navIcon:    HomeIcon,
-        anchLink:   '/home'    
+        anchLink:   '/home',    
     },
     {
-        navName:    'Rebuild Files',
+        navName:    'Cloud Rebuild Files',
         navIcon:    RebuildIcon,
         anchLink:   '/rebuildFiles'    
+    },
+    {
+        navName:    'Rebuild Files With Docker',
+        navIcon:    DockerIcon,
+        anchLink:   '/dockerrebuildFiles'
+    },
+    {
+        navName:    'Configuration',
+        navIcon:    SettingIcon,
+        anchLink:   '/configure'
     }
 ]
 
@@ -208,14 +269,17 @@ function SideDrawer({ showBack }: headerOptions) {
                     </IconButton>
                 </div>
                 <Divider />
+                
                 <List className={classes.navList}>
                 {navData.map((nav, index) => (
-                        <ListItem key={index} button component={NavLink} to={nav.anchLink} activeClassName={classes.active}>
+                        // <ListItem key={index} button component={NavLink} to={nav.anchLink} activeClassName={classes.active} selected ={index ==1}>
+                        <ListItem key={index} button component={NavLink} to={nav.anchLink} activeClassName={classes.active} selected = {location.pathname == nav.anchLink} >                               
                             <ListItemIcon><img src={nav.navIcon}  className={classes.icons}></img></ListItemIcon>
-                            <ListItemText primary={nav.navName} className={classes.navText}/>
+                            <div className={classes.tooltipBox}>{nav.navName}</div>
+                                <ListItemText primary={nav.navName} className={classes.navText}/>
                         </ListItem>
                     ))}
-                </List>               
+                </List>           
             </Drawer>
         </div>
     );

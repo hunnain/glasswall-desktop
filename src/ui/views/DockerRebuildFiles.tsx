@@ -4,31 +4,31 @@ import { makeStyles }           from '@material-ui/core/styles';
 import Table                    from '@material-ui/core/Table';
 import TableBody                from '@material-ui/core/TableBody';
 import TableCell                from '@material-ui/core/TableCell';
-import TableContainer           from '@material-ui/core/TableContainer';
 import TableHead                from '@material-ui/core/TableHead';
 import TableRow                 from '@material-ui/core/TableRow';
 import DeleteIcon               from '@material-ui/icons/Delete';
 import FolderIcon               from '@material-ui/icons/Folder';
+import {Redirect}                 from 'react-router-dom'
 import { CardActions,
         TablePagination,
         Switch,
         FormControlLabel,
-        Tooltip,         
+        Tooltip 
     }                           from '@material-ui/core';
-import InfoOutlinedIcon         from '@material-ui/icons/InfoOutlined';
 import Footer                   from '../components/Footer';
 import Dropzone                 from "react-dropzone";
 import FileCopyIcon             from '@material-ui/icons/FileCopy';
 import DropIcon                 from '../assets/images/dropIcon.png'
 import SideDrawer               from '../components/SideDrawer';
-import * as FileUploadUtils     from '../components/FileUploadUtils'
+import * as DockerUtils         from '../components/DockerUtils'
 import Loader                   from '../components/Loader';
 import * as Utils               from '../utils/utils'
 import RawXml                   from '../components/RawXml';
+import Logs                     from '../components/Logs';
+import HealthCheckStatus        from '../components/HealthCheckStatus'
 const { dialog }                = require('electron').remote
 
-var child_process               = require("child_process");
-const path                      = require('path');
+
 var fs                          = require('fs');
 const commonPath                = require('common-path');
 
@@ -156,7 +156,11 @@ const useStyles = makeStyles((theme) => ({
     },
     contentArea:{
          minHeight:                 '85.7vh',
-         padding:                   theme.spacing(3),
+         padding:                   theme.spacing(3)
+        
+    },
+    dropzoneArea:{
+        pointerEvents:             'none'
     },
      downloadLink:{
         maxWidth:                   '245px',
@@ -285,7 +289,7 @@ const useStyles = makeStyles((theme) => ({
         width:                      '100%',
         '& h4':{
             position:               'relative',
-            float:                  'left',      
+            float:                  'left',  
             '& span':{
                 color:                  'red',
                 margin:                 '14px 5px 0 0px',
@@ -370,7 +374,7 @@ const useStyles = makeStyles((theme) => ({
     toggleContainer:{
         float:                      'right',
         position:                   'relative',
-        marginTop:                  '5px',  
+        marginTop:                  '5px',
         '& span':{
             fontWeight:             'bold',
             
@@ -429,45 +433,50 @@ const useStyles = makeStyles((theme) => ({
         width:                      '100%',
         marginBottom:               '20px',
         float:                      'left'
-    }
+    },
+    docerIconGroup:{
+        '& h3':{
+
+        }
+    },
+
  }));
 
 
-
-function RebuildFiles(){
+function DockerRebuildFiles(){
     
     const classes = useStyles(); 
     const [fileNames, setFileNames]                 = useState<Array<string>>([]);
-    const [rebuildFileNames, setRebuildFileNames]   = useState<Array<RebuildResult>>([]);
+    const [rebuildFileNames, setRebuildFileNames]   = useState<Array<DockerRebuildResult>>([]);
     const [counter, setCounter]                     = useState(0);
     const [loader, setShowLoader]                   = useState(false);  
     const [id, setId]                               = useState("");  
     const [open, setOpen]                           = useState(false);  
     const [xml, setXml]                             = useState("");  
+    const [logView, setLogView]                     = useState(false);      
     const [page, setPage]                           = useState(0); 
     const [rowsPerPage, setRowsPerPage]             = useState(10);  
     const [folderId, setFolderId]                   = useState("");  
     const [targetDir, setTargetDir]                 = useState("");  
-    const [userTargetDir, setUserTargetDir]         = useState(sessionStorage.getItem(Utils.CLOUD_OUPUT_DIR_KEY)||"");  
+    const [userTargetDir, setUserTargetDir]         = useState(sessionStorage.getItem(Utils.DOCKER_OUPUT_DIR_KEY)||"");  
     const [masterMetaFile, setMasterMetaFile]       = useState<Array<Metadata>>([]);
-    const [outputDirType, setOutputDirType]         = useState(Utils.OUTPUT_DIR_FLAT)
-    const [showAlertBox, setshowAlertBox]           = useState(false);
+    const [showAlertBox, setshowAlertBox]           = useState(false);  
+    const [files, setFiles]                         = useState<Array<DockerRebuildResult>>([]);
     const [flat, setFlat]                           = React.useState(true);
-    const [files, setFiles]                         = useState<Array<RebuildResult>>([]);  
+    const [healthCheckStatus, setHealthCheckStatus] = React.useState( Number(sessionStorage.getItem("docker_status")) || 0);    
 
-    interface RebuildResult {
+    interface DockerRebuildResult {
         id              : string,
         sourceFileUrl   : string;
         url             : string;
         name?           : string;
         msg?            : string;
         isError?        : boolean;
-        xmlResult       : string;
+        xmlResultDocker : string;
         path?           : string;
         cleanFile?      : any;
       }
-
-    
+   
     interface Metadata {
         original_file       : string,
         clean_file?         : string;
@@ -477,8 +486,31 @@ function RebuildFiles(){
         time?               : string;
         userTargetFolder?   : string;
     }
-
    
+
+    React.useEffect(() => {
+       
+        console.log("health_chk" + sessionStorage.getItem(Utils.DOCKER_HEALTH_STATUS_KEY))
+        setShowLoader(true)
+        var status = healthCheckStatus;
+        if(sessionStorage.getItem(Utils.DOCKER_HEALTH_STATUS_KEY) == null){
+            const timer = setTimeout(() => {
+                status = DockerUtils.health_chk();
+                sessionStorage.setItem(Utils.DOCKER_HEALTH_STATUS_KEY, "" + status )
+                setHealthCheckStatus(status)
+                setShowLoader(false)
+               
+              }, 10);
+            
+        } else{
+            status = Number(sessionStorage.getItem(Utils.DOCKER_HEALTH_STATUS_KEY));
+            setHealthCheckStatus(status)
+            setShowLoader(false)
+            
+        }
+        
+    }, []);
+
     React.useEffect(() => {
         if(folderId!=''){
             var rootFolder = Utils.getProcessedPath() + Utils.getPathSep() +folderId
@@ -490,13 +522,11 @@ function RebuildFiles(){
         }
     }, [folderId]);
 
-
     React.useEffect(() => {
         if (counter == 0 && loader == true) {
             setShowLoader(false);
-            Utils.saveTextFile(JSON.stringify(masterMetaFile),  targetDir, 'metadata.json');
+            Utils.saveTextFile(JSON.stringify(masterMetaFile),  targetDir , 'metadata.json');
 
-            //if(userTargetDir !="" && outputDirType === Utils.OUTPUT_DIR_HIERARCY){
             if(userTargetDir !="" && !flat){
                 let PATHS: string[];
                 PATHS=[]
@@ -506,19 +536,17 @@ function RebuildFiles(){
                 });
                 const common = commonPath(PATHS);
                 common.parsedPaths.map((cPath:any)=>{
-                    Utils.saveBase64File( getRebuildFileContent(cPath.original), userTargetDir + Utils.getPathSep() + cPath.subdir, cPath.basePart );
+                    Utils.saveBase64File( getRebuildFileContent(cPath.original), userTargetDir +  Utils.getPathSep() + cPath.subdir, cPath.basePart );
             });
         }
         }
       }, [counter]);
-
-    
     
     React.useEffect(() => {
-        let rebuildFile: RebuildResult| undefined;
+        let rebuildFile: DockerRebuildResult| undefined;
         rebuildFile = rebuildFileNames.find((rebuildFile) => rebuildFile.id ==id);
-        if(rebuildFile){
-            setXml(rebuildFile.xmlResult);
+        if(rebuildFile){            
+            setXml(rebuildFile.xmlResultDocker);
           }
          }, [id, xml, open]);
 
@@ -528,91 +556,85 @@ function RebuildFiles(){
         setFiles(rebuildResultsPerPage)
         }, [rowsPerPage, page, rebuildFileNames]);
 
+    //callback for rebuild and analysis
+    const downloadResult =(result: any)=>{    
+        setRebuildFileNames(rebuildFileNames =>[...rebuildFileNames,  {
+                id:result.id,
+                url: result.url,
+                name: result.filename,
+                sourceFileUrl: result.source,
+                isError: result.isError,
+                msg: result.msg,
+                xmlResultDocker:result.xmlResult,
+                path: result.path,
+                cleanFile: result.cleanFile
+                }]);
 
-//callback for rebuild and analysis
-const downloadResult =(result: any)=>{
-    
-    setRebuildFileNames(rebuildFileNames =>[...rebuildFileNames,  {
-        id:result.id,
-        url: result.url,
-        name: result.filename,
-        sourceFileUrl: result.source,
-        isError: result.isError,
-        msg: result.msg,
-        xmlResult:result.xmlResult,
-        path: result.path,
-        cleanFile: result.cleanFile
-        }]);
+        setCounter(state=>state-1);
+        let fileHash: string;
+        fileHash = Utils.getFileHash(result.original)
+          
+        if(!result.isError){
+            var cleanFilePath = Utils.getProcessedPath() + Utils.getPathSep()
+                                 + result.targetDir + Utils.getPathSep() + fileHash
+                                  + Utils.getPathSep() + Utils._CLEAN_FOLDER;
+            Utils.saveBase64File(result.cleanFile, cleanFilePath, result.filename );
 
-    setCounter(state=>state-1);
-    let fileHash: string;
-    fileHash = Utils.getFileHash(result.original)
-      
-    if(!result.isError){
-        var cleanFilePath = Utils.getProcessedPath() + Utils.getPathSep()
-                             + result.targetDir + Utils.getPathSep() + fileHash
-                              + Utils.getPathSep() + Utils._CLEAN_FOLDER;
-        Utils.saveBase64File(result.cleanFile, cleanFilePath, result.filename );
+            var OriginalFilePath = Utils.getProcessedPath()  +  Utils.getPathSep()
+                                    + result.targetDir +  Utils.getPathSep()
+                                     + fileHash +  Utils.getPathSep() + Utils._ORIGINAL_FOLDER;
+            Utils.saveBase64File(result.original, OriginalFilePath, result.filename);  
 
-        var OriginalFilePath = Utils.getProcessedPath()  +  Utils.getPathSep()
-                                + result.targetDir +  Utils.getPathSep()
-                                 + fileHash +  Utils.getPathSep() + Utils._ORIGINAL_FOLDER;
-        Utils.saveBase64File(result.original, OriginalFilePath, result.filename);  
+            var reportFilePath =  Utils.getProcessedPath() +  Utils.getPathSep()
+                                 + result.targetDir +  Utils.getPathSep()
+                                  + fileHash +   Utils.getPathSep() + Utils._REPORT_FOLDER;
+            Utils.saveTextFile(result.xmlResult, reportFilePath, Utils.stipFileExt(result.filename)+'.xml');
 
-        var reportFilePath =  Utils.getProcessedPath() +  Utils.getPathSep()
-                             + result.targetDir +  Utils.getPathSep()
-                              + fileHash +   Utils.getPathSep() + Utils._REPORT_FOLDER;
-        Utils.saveTextFile(result.xmlResult, reportFilePath, Utils.stipFileExt(result.filename)+'.xml');
-
-        var metadataFilePath =  Utils.getProcessedPath() + Utils.getPathSep()  + 
-                                result.targetDir + Utils.getPathSep() + fileHash;
-        let content: Metadata;
-        content ={
-            original_file       : Utils._ORIGINAL_FOLDER + Utils.getPathSep() + result.filename,
-            clean_file          : Utils._CLEAN_FOLDER + Utils.getPathSep()+ result.filename,
-            report              : Utils._REPORT_FOLDER + Utils.getPathSep() + Utils.stipFileExt(result.filename)+'.xml',
-            status              : "Success",
-            time                : new Date().toLocaleDateString(),
-            userTargetFolder    : userTargetDir,
-        }
-        Utils.saveTextFile(JSON.stringify(content), metadataFilePath, 'metadata.json');
-    
-        content.original_file = fileHash + Utils.getPathSep() + Utils._ORIGINAL_FOLDER + Utils.getPathSep() + result.filename
-        content.clean_file = fileHash +Utils.getPathSep() + Utils._CLEAN_FOLDER + Utils.getPathSep() + result.filename
-        content.report = fileHash + Utils.getPathSep() + Utils._REPORT_FOLDER + Utils.getPathSep() + Utils.stipFileExt(result.filename)+'.xml'
-        content.userTargetFolder = userTargetDir;
-        
-        masterMetaFile.push(content);
-        if(userTargetDir !=""){
-            var filepath = userTargetDir;
-            if(flat){
-                Utils.saveBase64File(result.cleanFile, filepath, result.filename );
+            var metadataFilePath =  Utils.getProcessedPath() + Utils.getPathSep() + 
+                                    result.targetDir + Utils.getPathSep() + fileHash;
+            let content: Metadata;
+            content ={
+                original_file       : Utils._ORIGINAL_FOLDER + Utils.getPathSep() + result.filename,
+                clean_file          : Utils._CLEAN_FOLDER + Utils.getPathSep()+ result.filename,
+                report              : Utils._REPORT_FOLDER + Utils.getPathSep() + Utils.stipFileExt(result.filename)+'.xml',
+                status              : "Success",
+                time                : new Date().toLocaleDateString(),
+                userTargetFolder    : userTargetDir,
             }
-        }
-
-    }else{
-        var OriginalFilePath =Utils.getProcessedPath() +  Utils.getPathSep()
-                            + result.targetDir + Utils.getPathSep() + fileHash +  Utils.getPathSep() + 
-                                Utils._ORIGINAL_FOLDER;
-        console.log("Error case:" +OriginalFilePath + ", result.targetDir:" + result.targetDir)
-        Utils.saveBase64File(result.original, OriginalFilePath, result.filename);
-        let content: Metadata;
-        content ={
-            original_file       : fileHash + Utils.getPathSep() + Utils._ORIGINAL_FOLDER + Utils.getPathSep() + result.filename,
-            clean_file          : '',
-            report              : '',
-            status              : "Failure",
-            time                : new Date().toLocaleDateString(),
-            userTargetFolder    : userTargetDir,
-            message             : result.msg
-        }
-        masterMetaFile.push(content);
-    }        
-}
-
-   
-
-   
+            Utils.saveTextFile(JSON.stringify(content), metadataFilePath, 'metadata.json');
+        
+            content.original_file = fileHash + Utils.getPathSep() + Utils._ORIGINAL_FOLDER + Utils.getPathSep() + result.filename
+            content.clean_file = fileHash +Utils.getPathSep() + Utils._CLEAN_FOLDER + Utils.getPathSep() + result.filename
+            content.report = fileHash + Utils.getPathSep() + Utils._REPORT_FOLDER + Utils.getPathSep() + Utils.stipFileExt(result.filename)+'.xml'
+            content.userTargetFolder = userTargetDir;
+            
+            masterMetaFile.push(content);
+            if(userTargetDir !=""){
+                var filepath = userTargetDir;
+                if(flat){
+                    Utils.saveBase64File(result.cleanFile, filepath, result.filename );
+                }
+            }
+ 
+        }else{
+            var OriginalFilePath =Utils.getProcessedPath() +  Utils.getPathSep()
+                                + result.targetDir + Utils.getPathSep() + fileHash +  Utils.getPathSep() + 
+                                    Utils._ORIGINAL_FOLDER;
+            console.log("Error case:" +OriginalFilePath + ", result.targetDir:" + result.targetDir)
+            Utils.saveBase64File(result.original, OriginalFilePath, result.filename);
+            let content: Metadata;
+            content ={
+                original_file       : fileHash + Utils.getPathSep() + Utils._ORIGINAL_FOLDER + Utils.getPathSep() + result.filename,
+                clean_file          : '',
+                report              : '',
+                status              : "Failure",
+                time                : new Date().toLocaleDateString(),
+                userTargetFolder    : userTargetDir,
+                message             : result.msg
+            }
+            masterMetaFile.push(content);
+        }        
+    }
 
     const getRebuildFileContent =(filePath: string)=>{
         var rebuild = rebuildFileNames.find(rebuild=>rebuild.path === filePath);
@@ -621,36 +643,39 @@ const downloadResult =(result: any)=>{
         else    
             return null;
     }
-
      
+     const renderRedirect = () => {
+        if (healthCheckStatus) {
+          return <Redirect to='/configure' />
+        }
+      }
     //Multi file drop callback 
     const handleDrop = async (acceptedFiles:any) =>{
+        Utils.initLogger();
         let outputDirId: string;
         if(userTargetDir ==""){
             setshowAlertBox(true);
         }
-        else {
-            
+        else {            
             setCounter((state: any)=>state + acceptedFiles.length)
             setRebuildFileNames([]);
             setPage(0);
             masterMetaFile.length =0;
             outputDirId = Utils.guid()
             setFolderId(outputDirId);
-
-            //console.log(acceptedFiles[0].path)
-            acceptedFiles.map(async (file: File) => {
-                await FileUploadUtils.getFile(file).then(async (data: any) => {
+            setShowLoader(true);            
+            acceptedFiles.map((file: File) => {
+                DockerUtils.getFile(file).then(async (data: any) => {
+                    Utils.addLogLine(file.name,"Starting rebuild");
                     setFileNames((fileNames: any) =>[...fileNames, file.name]);
                     var url = window.webkitURL.createObjectURL(file);
                     let guid: string;
-                    guid =  Utils.guid();
-                    setShowLoader(true);
-                    Utils.sleep(600);
-                    await FileUploadUtils.makeRequest(data, url, guid, outputDirId, downloadResult);
+                    guid =  Utils.guid();                                    
+                    DockerUtils.makeRequest(data, url, guid, outputDirId, downloadResult);
                 })
             })
-        }
+        }        
+
     }  
 
     //view XML
@@ -661,7 +686,9 @@ const downloadResult =(result: any)=>{
     const openXml =(open:boolean)=>{
         setOpen(open);
     }
-
+    const openLogView =()=>{
+        setLogView(!logView);
+    }
     const handleChangePage = (event: any, newPage: number) => {
         setPage(newPage);
     };
@@ -674,20 +701,20 @@ const downloadResult =(result: any)=>{
     const clearAll =()=>{
         setRebuildFileNames([])
         setMasterMetaFile([]);
+        setCounter(0);
     }
-
-    // const handleChange= (e:any) =>{
-    //     setOutputDirType(e.currentTarget.value)
-    // }
 
     const closeAlertBox = () => {
         setshowAlertBox(false);
     }
 
     const successCallback =(result: any)=>{
-     
-        setUserTargetDir(result.filePaths[0])
-        sessionStorage.setItem(Utils.CLOUD_OUPUT_DIR_KEY, result.filePaths[0]);
+        console.log(result.filePaths)
+        if(result.filePaths != undefined){
+            console.log(result.filePaths[0])
+            setUserTargetDir(result.filePaths[0])
+            sessionStorage.setItem(Utils.DOCKER_OUPUT_DIR_KEY, result.filePaths[0]);
+        }        
     }
     const failureCallback =(error: any)=>{
         alert(`An error ocurred selecting the directory :${error.message}`) 
@@ -703,44 +730,34 @@ const downloadResult =(result: any)=>{
         promise = dialog.showOpenDialog(options)
         promise.then(successCallback, failureCallback);
     }
-
+   
     const changeDownloadmode = (event:any) => {
         setFlat((prev) => !prev);
-    } 
+    };   
 
     return(
         <div>   
-            {open && <RawXml content={xml} isOpen={open} handleOpen={openXml}/>   }                
+            {open && <RawXml content={'\'' + xml + '\''} isOpen={open} handleOpen={openXml}/>   }
+            {logView && <Logs content={ localStorage.getItem("logs") || ""} isOpen={logView} handleOpen={openLogView}/>   }                
             <div className={classes.root}> 
                 <SideDrawer showBack={false}/>
+                {healthCheckStatus !=0 && renderRedirect()}
                 <main className={classes.content}>
                     <div className={classes.toolbar} />  
                     <div className={classes.contentArea}>             
-                    <h3>Cloud Rebuild Files                   
-                    {/* <div className={classes.toggleContainer}>
-                    <FormControlLabel className={classes.toggleToolTip}
-                        //title={flat ? "Flat" : "Hierarchy"}
-                        value={flat ? "Flat" : "Hierarchy"}
-                        control={<Switch color="primary" checked={flat} onChange={changeDownloadmode}/>} 
-                        label={flat ? "Flat" : "Hierarchy"} />
-                        <div className={classes.toggleToolTipTitle}>
-                        The hierarchical filesystems option to save processed files in a tree structure of directories,
-flat filesystem option to saves in a single directory that contains all files with no subdirectories
-                        </div>
-                    </div> */}
-                    </h3>
-                        <Dropzone onDrop={handleDrop} >
-                            {({ getRootProps, getInputProps }) => (
-                            <div {...getRootProps()} className={classes.dropzone}>
-                                <input {...getInputProps()} />
-                                    <div className={classes.dropField}>
-                                    <p>Drag and drop files</p>
-                                    <img src={DropIcon} className={classes.icons}/> 
-                                    <button className={classes.selectFileBtn}>Select files</button>
+                        <HealthCheckStatus handleOpen={openLogView} status={healthCheckStatus}/> 
+                            <Dropzone onDrop={handleDrop} >
+                                {({ getRootProps, getInputProps }) => (
+                                <div {...getRootProps()} className={classes.dropzone}>
+                                    <input {...getInputProps()} />
+                                        <div className={classes.dropField}>
+                                        <p>Drag and drop files</p>
+                                        <img src={DropIcon} className={classes.icons}/> 
+                                        <button className={classes.selectFileBtn}>Select files</button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </Dropzone>
+                            )}
+                            </Dropzone>
                     <div className={classes.errMsg}> Failed to upload </div>
                     <div className={classes.successMsg}>File uploaded successuly </div>
                     <div className={classes.tableContainer}>
@@ -754,25 +771,25 @@ flat filesystem option to saves in a single directory that contains all files wi
                                 </div>   
                             }                       
                             {loader  && <Loader/> }   
+                            
                                 <div className={classes.tableField}>
                                     <div className={classes.settings}>  
                                         <div className={classes.btnHeading}>                                                                           
-                                            <div className={classes.headingGroup}>                                                                         
-                                                <h4>Select Directory Path 
-                                                    <span>*</span> 
-                                                </h4>
+                                        <div className={classes.headingGroup}>                                                                         
+                                                <h4>Select Directory Path  <span>*</span> </h4>
+                                               
                                                 <div className={classes.toggleContainer}>
                                                     <FormControlLabel className={classes.toggleToolTip}
                                                         //title={flat ? "Flat" : "Hierarchy"}
                                                         value={flat ? "Flat" : "Hierarchy"}
                                                         control={<Switch color="primary" checked={flat} onChange={changeDownloadmode}/>} 
-                                                        label={flat ? "Flat" : "Hierarchy"} />
+                                                        label={flat ? " Flat   " : "Hierarchy"} />
                                                         <div className={classes.toggleToolTipTitle}>
                                                         The hierarchical filesystems option to save processed files in a tree structure of directories,
                                 flat filesystem option to saves in a single directory that contains all files with no subdirectories
                                                         </div>
                                                     </div>
-                                            </div>  
+                                            </div>   
                                             <div className={classes.saveFileBtn}>
                                                 <input 
                                                     readOnly        = {true} 
@@ -785,65 +802,65 @@ flat filesystem option to saves in a single directory that contains all files wi
                                                     Select Target Directory
                                                 </button>
                                             </div>
-                                        </div>                                   
+                                        </div>                                        
                                     </div>
                                     {rebuildFileNames.length>0 && 
                                     <div> 
-                                        <h3>Cloud Rebuild Files
-                                            <button onClick={()=>Utils.open_file_exp(targetDir)} className={rebuildFileNames.length>0? classes.outFolderBtn:classes.outFolderBtnDissabled}><FolderIcon className={classes.btnIcon}/> Browse Output Folder</button>
-                                        </h3>
-                                        <Table className={classes.table} size="small" aria-label="a dense table">
-                                            <TableHead>
-                                            <TableRow>
-                                                <TableCell className={classes.texttBold}>Status</TableCell>
-                                                <TableCell align="left" className={classes.texttBold}>Original</TableCell>
-                                                <TableCell align="left" className={classes.texttBold}>Rebuilt</TableCell>
-                                                <TableCell align="left" className={classes.texttBold}>XML</TableCell>
+                                    <h3>Rebuild Files  With Docker
+                                        <button onClick={()=>Utils.open_file_exp(targetDir)} className={rebuildFileNames.length>0? classes.outFolderBtn:classes.outFolderBtnDissabled}><FolderIcon className={classes.btnIcon}/> Browse Output Folder</button>
+                                    </h3>
+                                    <Table className={classes.table} size="small" aria-label="a dense table">
+                                        <TableHead>
+                                        <TableRow>
+                                            <TableCell className={classes.texttBold}>Status</TableCell>
+                                            <TableCell align="left" className={classes.texttBold}>Original</TableCell>
+                                            <TableCell align="left" className={classes.texttBold}>Rebuilt</TableCell>
+                                            <TableCell align="left" className={classes.texttBold}>XML</TableCell>
+                                        </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                        {files.map((row) => (
+                                            <TableRow key={row.id}>
+                                            <TableCell align="left" className={classes.status}>{row.isError == true? <span>Failed</span>:<p>Success</p>}</TableCell>
+                                            <TableCell align="left"><a id="download_link" href={row.sourceFileUrl} download={row.name} className={classes.downloadLink} title={row.name}><FileCopyIcon className={classes.fileIcon}/> {row.name}</a></TableCell>
+                                            {
+                                                !row.isError ?
+                                                    <TableCell align="left"><a id="download_link" href={row.url} download={row.name} className={classes.downloadLink} title={row.name}><FileCopyIcon className={classes.fileIcon}/>{row.name}</a></TableCell>
+                                                    : <TableCell align="left">{row.msg}</TableCell>
+                                            }
+                                            {
+                                                !row.isError ?
+                                                <TableCell align="left"><button  onClick={() => viewXML(row.id)} className={classes.viewBtn}>{!row.isError?'View Report':''}</button></TableCell>
+                                                    : <TableCell align="left"></TableCell>
+                                            }
+                                                
                                             </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                            {files.map((row) => (
-                                                <TableRow key={row.id}>
-                                                <TableCell align="left" className={classes.status}>{row.isError == true? <span>Failed</span>:<p>Success</p>}</TableCell>
-                                                <TableCell align="left"><a id="download_link" href={row.sourceFileUrl} download={row.name} className={classes.downloadLink} title={row.name}><FileCopyIcon className={classes.fileIcon}/> {row.name}</a></TableCell>
-                                                {
-                                                    !row.isError ?
-                                                        <TableCell align="left"><a id="download_link" href={row.url} download={row.name} className={classes.downloadLink} title={row.name}><FileCopyIcon className={classes.fileIcon}/>{row.name}</a></TableCell>
-                                                        : <TableCell align="left">{row.msg}</TableCell>
-                                                }
-                                                {
-                                                    !row.isError ?
-                                                    <TableCell align="left"><button  onClick={() => viewXML(row.id)} className={classes.viewBtn}>{!row.isError?'View Report':''}</button></TableCell>
-                                                        : <TableCell align="left"></TableCell>
-                                                }
-                                                    
-                                                </TableRow>
-                                            ))}
-                                            </TableBody>
-                                        </Table>
-                                        <button onClick={clearAll} className={files.length>0?classes.deleteBtn:classes.deleteBtnDisabled}><DeleteIcon className={classes.btnIcon}/> Clear All</button>
+                                        ))}
+                                        </TableBody>
+                                    </Table>
+                                    <button onClick={clearAll} className={files.length>0?classes.deleteBtn:classes.deleteBtnDisabled}><DeleteIcon className={classes.btnIcon}/> Clear All</button>
                                     </div>
                                     }
                                 </div>
-                        </div>
-                       
-                        {
-                        files.length>0 &&
-                         <CardActions className={classes.actions}>
-                             <TablePagination
-                                  onChangePage        ={handleChangePage }
-                                  onChangeRowsPerPage ={handleChangeRowsPerPage}
-                                  component           ="div"
-                                  count               ={rebuildFileNames.length                   }
-                                  page                ={page                           }
-                                  rowsPerPage         ={rowsPerPage                    }
-                                  rowsPerPageOptions  ={[5, 10, 25, { label: 'All', value: -1 }]     }               
-                                  SelectProps         ={{
-                                                          inputProps: { 'aria-label': 'rows per page' },
-                                                          native: true,
-                                                        }}
-                              />
-                          </CardActions> 
+                                </div>
+                        
+                            {
+                            files.length>0 &&
+                            <CardActions className={classes.actions}>
+                                <TablePagination
+                                    onChangePage        ={handleChangePage }
+                                    onChangeRowsPerPage ={handleChangeRowsPerPage}
+                                    component           ="div"
+                                    count               ={rebuildFileNames.length                   }
+                                    page                ={page                           }
+                                    rowsPerPage         ={rowsPerPage                    }
+                                    rowsPerPageOptions  ={[5, 10, 25, { label: 'All', value: -1 }]     }               
+                                    SelectProps         ={{
+                                                            inputProps: { 'aria-label': 'rows per page' },
+                                                            native: true,
+                                                            }}
+                                />
+                            </CardActions> 
                           }
                     </div>
                     </div>
@@ -856,4 +873,4 @@ flat filesystem option to saves in a single directory that contains all files wi
     )
 }
 
-export default RebuildFiles;
+export default DockerRebuildFiles;

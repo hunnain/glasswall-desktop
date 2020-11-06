@@ -93,8 +93,8 @@ function Footer(){
     const getVersion = () =>{   
         ipcRenderer.send('app_version');
         ipcRenderer.on('app_version', (event:any, arg:any) => {
-          console.log("app_version callback "+arg.version);
-            console.log('New Version ' + arg.version)
+        //   console.log("app_version callback "+arg.version);
+        //   console.log('New Version ' + arg.version)
             setVersion(arg.version)
         });
        

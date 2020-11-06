@@ -17,7 +17,7 @@ export default function Feature1() {
             <div className="text-container">
               <h3>The File Drop</h3>
               <p>
-              Organize clusters into logical groups. Workspaces are used to organize a number of clusters into logical groups. It is easy to create and switch between workspaces. 
+               Just drag and drop the files from your local hard disk, and the Glasswall Desktop will rebuild them using the Glasswall Rebuild API (currently hosted on Azure).
               </p>
             </div>
           </div>

@@ -92,8 +92,8 @@ function ReleaseNote(){
             <a className={classes.webAnchor} href={Utils.WEBSITE_URL} title="k8-proxy-desktop">Glasswall Desktop</a>
             <h3 className={classes.releaseHeading}> <a className={classes.webHeading} href={Utils.RELEASE_URL}> Realease Note</a></h3>
             {
-                Utils.RELEAE_NOTES.map(issue=>{
-                    return  <Grid className={classes.releaseNoteContainer}>                    
+                Utils.RELEAE_NOTES.map((issue, index)=>{
+                    return  <Grid key ={index} className={classes.releaseNoteContainer}>                    
                     <div className={classes.releaseGrid}>
                         <div className={classes.releaseList}>                            
                             <div className={classes.releaseVersion}>{Utils.VERSION}</div>

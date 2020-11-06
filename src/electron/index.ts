@@ -83,7 +83,7 @@ function createMenu(){
             {
                 label: 'Learn More',
                 click() { 
-                    shell.openExternal(' https://github.com/k8-proxy/glasswall-desktop')
+                    shell.openExternal(' https://github.com/k8-proxy/glasswall-desktop/blob/main/README.md')
                 },
                 accelerator: 'CmdOrCtrl+H'
             }
@@ -127,7 +127,7 @@ function makeWindow(): typeof BrowserWindow {
 
 let mainWindow: typeof BrowserWindow | undefined
 
-function openMainWindow(): void {
+function openMainWindow(): void {    
     let url = `file://${__dirname}/../ui/index.html`;
 
     if (!mainWindow || mainWindow.isDestroyed()) {
@@ -163,10 +163,12 @@ app.on('certificate-error', (event: Event, contents: typeof WebContents, url: St
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  
+  app.quit();
 })
+
+
+
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
